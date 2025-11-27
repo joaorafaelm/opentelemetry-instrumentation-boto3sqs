@@ -310,38 +310,27 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             queue_name = Boto3SQSInstrumentor._extract_queue_name_from_url(
                 queue_url
             )
-            with self._tracer.start_as_current_span(
-                name=f"{queue_name} receive",
-                end_on_exit=True,
-                kind=SpanKind.CONSUMER,
-            ) as span:
-                Boto3SQSInstrumentor._enrich_span(
-                    span,
-                    queue_name,
-                    queue_url,
-                    operation=MessagingOperationValues.RECEIVE,
+            retval = wrapped(
+                *args,
+                MessageAttributeNames=message_attribute_names,
+                **kwargs,
+            )
+            messages = retval.get("Messages", [])
+            if not messages:
+                return retval
+            for message in messages:
+                receipt_handle = message.get("ReceiptHandle")
+                if not receipt_handle:
+                    continue
+                Boto3SQSInstrumentor._safe_end_processing_span(
+                    receipt_handle
                 )
-                retval = wrapped(
-                    *args,
-                    MessageAttributeNames=message_attribute_names,
-                    **kwargs,
+                self._create_processing_span(
+                    queue_name, queue_url, receipt_handle, message
                 )
-                messages = retval.get("Messages", [])
-                if not messages:
-                    return retval
-                for message in messages:
-                    receipt_handle = message.get("ReceiptHandle")
-                    if not receipt_handle:
-                        continue
-                    Boto3SQSInstrumentor._safe_end_processing_span(
-                        receipt_handle
-                    )
-                    self._create_processing_span(
-                        queue_name, queue_url, receipt_handle, message
-                    )
-                retval["Messages"] = Boto3SQSInstrumentor.ContextableList(
-                    messages
-                )
+            retval["Messages"] = Boto3SQSInstrumentor.ContextableList(
+                messages
+            )
             return retval
 
         wrap_function_wrapper(
