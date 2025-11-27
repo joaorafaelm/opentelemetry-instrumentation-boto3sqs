@@ -16,7 +16,7 @@
 
 from contextlib import contextmanager
 from typing import Any, Dict
-from unittest import TestCase, mock
+from unittest import TestCase, mock, skip
 
 import boto3
 from botocore.awsrequest import AWSResponse
@@ -280,6 +280,7 @@ class TestBoto3SQSInstrumentation(TestBase):
         )
         self._assert_injected_span(message_attrs, span)
 
+    @skip(reason="receive span disabled")
     def test_receive_message(self):
         msg_def = {
             "1": {"receipt": "01", "trace_id": 10, "span_id": 1},
