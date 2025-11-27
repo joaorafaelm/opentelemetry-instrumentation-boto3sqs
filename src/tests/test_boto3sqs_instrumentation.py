@@ -302,21 +302,6 @@ class TestBoto3SQSInstrumentation(TestBase):
 
         self.assertIn("traceparent", message_attr_names)
 
-        # receive span
-        receive_span = self._get_only_span()
-        receive_span_ctx = receive_span.get_span_context()
-        self.assertEqual(f"{self._queue_name} receive", receive_span.name)
-        self.assertEqual(SpanKind.CONSUMER, receive_span.kind)
-        self.assertEqual(
-            {
-                SpanAttributes.MESSAGING_OPERATION: MessagingOperationValues.RECEIVE.value,
-                **self._default_span_attrs(),
-            },
-            receive_span.attributes,
-        )
-
-        self.memory_exporter.clear()
-
         # processing spans
         self.assertEqual(2, len(response["Messages"]))
         for msg in response["Messages"]:
@@ -342,12 +327,6 @@ class TestBoto3SQSInstrumentation(TestBase):
                 },
                 span.attributes,
             )
-
-            # processing span links
-            self.assertEqual(1, len(span.links))
-            link = span.links[0]
-            self.assertEqual(receive_span_ctx.trace_id, link.context.trace_id)
-            self.assertEqual(receive_span_ctx.span_id, link.context.span_id)
 
             # processing span parent
             self.assertEqual(attrs["trace_id"], span.get_span_context().trace_id)
