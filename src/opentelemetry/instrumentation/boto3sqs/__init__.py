@@ -198,14 +198,18 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
         message: Dict[str, Any],
     ) -> None:
         message_attributes = message.get("MessageAttributes", {})
-        links = []
+        links = [Link(trace.get_current_span().get_span_context())]
         ctx = propagate.extract(message_attributes, getter=boto3sqs_getter)
         parent_span_ctx = trace.get_current_span(ctx).get_span_context()
-        if parent_span_ctx.is_valid:
-            links.append(Link(context=parent_span_ctx))
+
+        # unset the current span, getting the root context
+        root_context = trace.set_span_in_context(None)
 
         span = self._tracer.start_span(
-            name=f"{queue_name} process", links=links, kind=SpanKind.CONSUMER
+            name=f"{queue_name} process",
+            kind=SpanKind.CONSUMER,
+            context=ctx if parent_span_ctx.is_valid else root_context,
+            links=links,
         )
         with trace.use_span(span):
             message_id = message.get("MessageId")
