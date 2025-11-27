@@ -124,11 +124,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
             if started_span is None:
                 return retval
             if Boto3SQSInstrumentor.current_context_token:
-                try:
-                    context.detach(Boto3SQSInstrumentor.current_context_token)
-                except ValueError:
-                    # The context was already detached
-                    pass
+                context.detach(Boto3SQSInstrumentor.current_context_token)
             Boto3SQSInstrumentor.current_context_token = context.attach(
                 trace.set_span_in_context(started_span)
             )
@@ -185,11 +181,7 @@ class Boto3SQSInstrumentor(BaseInstrumentor):
                 == started_span
             ):
                 if Boto3SQSInstrumentor.current_context_token:
-                    try:
-                        context.detach(Boto3SQSInstrumentor.current_context_token)
-                    except ValueError:
-                        # The context was already detached
-                        pass
+                    context.detach(Boto3SQSInstrumentor.current_context_token)
                     Boto3SQSInstrumentor.current_context_token = None
             started_span.end()
 
